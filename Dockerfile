@@ -1,4 +1,7 @@
-FROM golang:1.21-alpine AS builder
+FROM golang:1.23-alpine AS builder
+
+ENV GOTOOLCHAIN=go1.25.5
+
 WORKDIR /app
 COPY . .
 RUN go mod download

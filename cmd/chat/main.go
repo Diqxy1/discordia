@@ -75,6 +75,13 @@ func main() {
 
 	mdns.NewMdnsService(h, "sala-1", &discoveryNotifee{h: h}).Start()
 
+	isCloud := os.Getenv("FLY_APP_NAME") != ""
+
+	if isCloud {
+		fmt.Println("Rodando em modo Node (Nuvem).")
+		select {}
+	}
+
 	fmt.Printf("Seu ID: %s | Digite seu nome: ", h.ID().String()[:6])
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Scan()

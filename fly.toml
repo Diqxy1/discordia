@@ -1,0 +1,21 @@
+app = "discordia"
+primary_region = "gru"
+
+[build]
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 4001
+  [[services.ports]]
+    port = 4001
+
+[[services]]
+  protocol = "udp"
+  internal_port = 4001
+  [[services.ports]]
+    port = 4001
+
+[vm]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 256

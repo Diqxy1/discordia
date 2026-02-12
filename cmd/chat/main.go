@@ -19,124 +19,59 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	"github.com/multiformats/go-multiaddr"
-	ma "github.com/multiformats/go-multiaddr"
 )
 
 func main() {
 	ctx := context.Background()
-
 	repo := repository.NewBadgerRepo("./data")
+
+	// Carregar ou gerar identidade
 	privKeyData, err := repo.GetIdentity()
-
 	var privKey crypto.PrivKey
-
 	if err != nil {
-		privKey, _, err = crypto.GenerateKeyPair(crypto.Ed25519, -1)
-		if err != nil {
-			panic(err)
-		}
+		privKey, _, _ = crypto.GenerateKeyPair(crypto.Ed25519, -1)
 		rawKey, _ := crypto.MarshalPrivateKey(privKey)
 		repo.SaveIdentity(rawKey)
-		fmt.Println("Nova identidade gerada e salva.")
 	} else {
-		privKey, err = crypto.UnmarshalPrivateKey(privKeyData)
-		if err != nil {
-			panic(err)
-		}
-		fmt.Println("Identidade carregada do banco.")
-	}
-
-	externalAddr, err := ma.NewMultiaddr("/dns4/yamanote.proxy.rlwy.net/tcp/50519")
-	if err != nil {
-		panic(err)
+		privKey, _ = crypto.UnmarshalPrivateKey(privKeyData)
 	}
 
 	h, err := libp2p.New(
 		libp2p.Identity(privKey),
-		libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/4001"),
-		libp2p.AddrsFactory(func(addrs []ma.Multiaddr) []ma.Multiaddr {
-			return []ma.Multiaddr{externalAddr}
-		}),
-		libp2p.NATPortMap(),
-		libp2p.EnableHolePunching(),
-		libp2p.EnableRelayService(),
-		libp2p.EnableAutoRelayWithPeerSource(func(ctx context.Context, num int) <-chan peer.AddrInfo {
-			return make(<-chan peer.AddrInfo)
-		}),
+		libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/0"), // Porta aleatória local
 	)
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Printf("Seu endereço completo:\n")
-	for _, addr := range h.Addrs() {
-		fmt.Printf("%s/p2p/%s\n", addr.String(), h.ID().String())
-	}
-
-	ps, _ := pubsub.NewGossipSub(context.Background(), h)
-
+	ps, _ := pubsub.NewGossipSub(ctx, h)
 	network := p2p.NewLibp2pService(ctx, h, ps, "sala-1")
-
 	chat := usecase.NewChatUseCase(repo, network)
-
 	mdns.NewMdnsService(h, "sala-1", &discoveryNotifee{h: h}).Start()
 
-	isCloud := os.Getenv("RAILWAY_ENVIRONMENT") != ""
-
-	if isCloud {
-		fmt.Println("Rodando em modo Node (Nuvem).")
-		select {}
-	}
-
-	fmt.Printf("Seu ID: %s | Digite seu nome: ", h.ID().String()[:6])
+	fmt.Printf("Seu ID: %s\nDigite seu nome: ", h.ID().String()[:6])
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Scan()
 	username := scanner.Text()
-
-	history, _ := repo.GetAll()
-	for _, m := range history {
-		fmt.Printf("[%s] %s: %s (Histórico)\n", m.Timestamp.Format("15:04"), m.Sender, m.Content)
-	}
 
 	chat.StartReceiving(func(m domain.Message) {
 		fmt.Printf("\n\x1b[34m[%s]:\x1b[0m %s\n> ", m.Sender, m.Content)
 	})
 
-	fmt.Println("\nConectado! Digite sua mensagem ou /connect <endereço> para add um amigo:")
+	fmt.Println("\nDigite /connect <endereço> para add o Node:")
 	for scanner.Scan() {
 		input := scanner.Text()
-		if input == "" {
-			continue
-		}
-
-		// COMANDO PARA CONECTAR MANUALMENTE
 		if strings.HasPrefix(input, "/connect ") {
 			addrStr := strings.TrimPrefix(input, "/connect ")
-
-			// Transforma string em endereço
-			maddr, err := multiaddr.NewMultiaddr(addrStr)
-			if err != nil {
-				fmt.Println("Endereço inválido:", err)
-				continue
-			}
-
-			// Extrai o ID do peer e tenta conectar
-			info, err := peer.AddrInfoFromP2pAddr(maddr)
-			if err != nil {
-				fmt.Println("Erro no endereço:", err)
-				continue
-			}
-
+			maddr, _ := multiaddr.NewMultiaddr(addrStr)
+			info, _ := peer.AddrInfoFromP2pAddr(maddr)
 			if err := h.Connect(ctx, *info); err != nil {
-				fmt.Println("Falha ao conectar:", err)
+				fmt.Println("Erro:", err)
 			} else {
-				fmt.Println("Conectado com sucesso!")
+				fmt.Println("Conectado ao Node!")
 			}
-			fmt.Print("> ")
 			continue
 		}
-
-		// Fluxo normal de mensagem
 		chat.SendMessage(username, input)
 		fmt.Print("> ")
 	}

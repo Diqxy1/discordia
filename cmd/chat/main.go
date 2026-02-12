@@ -75,7 +75,7 @@ func main() {
 
 	mdns.NewMdnsService(h, "sala-1", &discoveryNotifee{h: h}).Start()
 
-	isCloud := os.Getenv("FLY_APP_NAME") != ""
+	isCloud := os.Getenv("RAILWAY_ENVIRONMENT") != ""
 
 	if isCloud {
 		fmt.Println("Rodando em modo Node (Nuvem).")

@@ -46,7 +46,10 @@ func main() {
 	}
 
 	// Endereço do Proxy TCP do Railway
-	externalAddr, _ := ma.NewMultiaddr("/dns4/yamanote.proxy.rlwy.net/tcp/50519")
+	externalAddr, err := ma.NewMultiaddr("/dns4/yamanote.proxy.rlwy.net/tcp/50519")
+	if err != nil {
+		panic(fmt.Sprintf("Erro ao criar multiaddr: %v", err))
+	}
 
 	h, err := libp2p.New(
 		libp2p.Identity(privKey),

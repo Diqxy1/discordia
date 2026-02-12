@@ -19,6 +19,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	"github.com/multiformats/go-multiaddr"
+	ma "github.com/multiformats/go-multiaddr"
 )
 
 func main() {
@@ -45,12 +46,17 @@ func main() {
 		fmt.Println("Identidade carregada do banco.")
 	}
 
+	externalAddr, err := ma.NewMultiaddr("/dns4/yamanote.proxy.rlwy.net/tcp/50519")
+	if err != nil {
+		panic(err)
+	}
+
 	h, err := libp2p.New(
 		libp2p.Identity(privKey),
-		libp2p.ListenAddrStrings(
-			"/ip4/0.0.0.0/tcp/0",
-			"/ip4/0.0.0.0/udp/0/quic-v1",
-		),
+		libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/4001"),
+		libp2p.AddrsFactory(func(addrs []ma.Multiaddr) []ma.Multiaddr {
+			return []ma.Multiaddr{externalAddr}
+		}),
 		libp2p.NATPortMap(),
 		libp2p.EnableHolePunching(),
 		libp2p.EnableRelayService(),
